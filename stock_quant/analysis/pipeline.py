@@ -4,12 +4,15 @@ import pandas as pd
 
 from stock_quant.features import add_price_features
 from stock_quant.models import (
+    classify_regime,
+    directional_edge,
     ewma_volatility,
     manipulation_guard_score,
     mean_reversion_score,
     persistence_features,
     persistence_score,
     range_expansion_score,
+    risk_adjustment,
     tail_score,
     tsm_score,
     vol_adjusted_score,
@@ -33,6 +36,9 @@ def run_signal_pipeline(price_df: pd.DataFrame) -> pd.DataFrame:
     df["vol_score"] = vol_adjusted_score(df)
     df["tail_score"] = tail_score(df)
     df["man_score"] = manipulation_guard_score(df)
+    df["regime"] = classify_regime(df)
+    df["directional_edge"] = directional_edge(df)
+    df["risk_adjustment"] = risk_adjustment(df)
     df = add_forward_returns(df)
     return df
 
@@ -54,6 +60,9 @@ def latest_analysis(df: pd.DataFrame, symbols: list[str] | None = None) -> pd.Da
         "vol_score",
         "tail_score",
         "man_score",
+        "regime",
+        "directional_edge",
+        "risk_adjustment",
         "ewma_vol",
         "yz_vol",
         "future_return_5d",
