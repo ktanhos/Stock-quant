@@ -15,20 +15,14 @@ data_mode = st.radio(
     horizontal=True,
 )
 
-api_key = ""
 if data_mode == "API miễn phí":
     st.caption(
-        "Sử dụng thư viện vnstock. Dữ liệu lịch sử được gọi theo từng đoạn "
-        "để tránh giới hạn số lượng nến trong một lần truy vấn."
+        "Sử dụng thư viện vnstock theo kiến trúc Unified UI."
     )
 else:
-    api_key = st.text_input(
-        "API Key đã đăng ký",
-        type="password",
-        help="API Key chỉ được dùng trong phiên chạy hiện tại và không được ghi vào GitHub.",
-    )
     st.caption(
-        "Nguồn dữ liệu đăng ký sử dụng vnstock_data theo kiến trúc Unified UI."
+        "Sử dụng vnstock_data theo cùng kiến trúc Unified UI. "
+        "Thông tin xác thực được thư viện đã cài đặt quản lý."
     )
 
 symbols_text = st.text_input("Mã cổ phiếu", value="VIC")
@@ -50,18 +44,11 @@ if st.button("Tải dữ liệu và phân tích"):
         st.error("Cần chọn ngày bắt đầu và ngày kết thúc")
         st.stop()
 
-    if data_mode == "API đã đăng ký" and not api_key.strip():
-        st.error("Cần nhập API Key đã đăng ký")
-        st.stop()
-
     mode = "registered" if data_mode == "API đã đăng ký" else "free"
 
     try:
         with st.spinner("Đang tải dữ liệu..."):
-            client = VnstockClient(
-                mode=mode,
-                api_key=api_key if mode == "registered" else None,
-            )
+            client = VnstockClient(mode=mode)
             prices = client.fetch_price_history(symbols, str(start), str(end))
 
         validation = validate_price_frame(prices)
@@ -88,6 +75,17 @@ if st.button("Tải dữ liệu và phân tích"):
         with st.spinner("Đang chạy 9 mô hình..."):
             result = run_signal_pipeline(prices)
 
+    except ImportError as exc:
+        if mode == "registered":
+            st.error(
+                "Không thể sử dụng nguồn dữ liệu đã đăng ký vì môi trường Streamlit "
+                "chưa có thư viện vnstock_data. Hãy cài vnstock_data theo trình cài "
+                "đặt chính thức của Vnstock trong đúng môi trường Python đang chạy Streamlit."
+            )
+            st.code(str(exc))
+        else:
+            st.error(f"Không thể tải dữ liệu: {exc}")
+        st.stop()
     except Exception as exc:
         st.error(f"Không thể tải hoặc phân tích dữ liệu: {exc}")
         st.stop()
@@ -110,7 +108,9 @@ if st.button("Tải dữ liệu và phân tích"):
 
         pairs = highly_correlated_pairs(corr_display)
         if pairs.empty:
-            st.info("Chưa phát hiện cặp Score có tương quan tuyệt đối từ 0,70 trở lên")
+            st.info(
+                "Chưa phát hiện cặp Score có tương quan tuyệt đối từ 0,70 trở lên"
+            )
         else:
             st.warning("Các Score có tương quan cao")
             st.dataframe(pairs, use_container_width=True)
