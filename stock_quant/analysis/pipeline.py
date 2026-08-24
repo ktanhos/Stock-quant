@@ -9,6 +9,7 @@ from stock_quant.models import (
     ewma_volatility,
     manipulation_guard_score,
     mean_reversion_score,
+    monte_carlo_score,
     persistence_features,
     persistence_score,
     range_expansion_score,
@@ -22,8 +23,16 @@ from stock_quant.models import (
 from stock_quant.research.targets import add_forward_returns
 
 
-def run_signal_pipeline(price_df: pd.DataFrame) -> pd.DataFrame:
-    """Run all deterministic signals for one or many symbols."""
+def run_signal_pipeline(
+    price_df: pd.DataFrame,
+    monte_carlo_simulations: int = 1000,
+    monte_carlo_stride: int = 5,
+) -> pd.DataFrame:
+    """Run all deterministic signals for one or many symbols.
+
+    Chín mô hình được tính độc lập với nhau và giữ nguyên công thức. Pipeline
+    không cộng chúng lại thành một Score tổng hợp.
+    """
     df = add_price_features(price_df)
     df = persistence_features(df)
     df["ewma_vol"] = ewma_volatility(df)
@@ -36,6 +45,11 @@ def run_signal_pipeline(price_df: pd.DataFrame) -> pd.DataFrame:
     df["vol_score"] = vol_adjusted_score(df)
     df["tail_score"] = tail_score(df)
     df["man_score"] = manipulation_guard_score(df)
+    df["mc_score"] = monte_carlo_score(
+        df,
+        simulations=monte_carlo_simulations,
+        stride=monte_carlo_stride,
+    )
     df["regime"] = classify_regime(df)
     df["directional_edge"] = directional_edge(df)
     df["risk_adjustment"] = risk_adjustment(df)
@@ -53,11 +67,12 @@ def latest_analysis(df: pd.DataFrame, symbols: list[str] | None = None) -> pd.Da
         "date",
         "symbol",
         "tsm_score",
+        "vol_score",
+        "mr_score",
+        "mc_score",
         "vrh_score",
         "exp_score",
-        "mr_score",
         "vsf_score",
-        "vol_score",
         "tail_score",
         "man_score",
         "regime",

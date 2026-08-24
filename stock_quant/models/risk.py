@@ -46,3 +46,43 @@ def monte_carlo_summary(
         "p50_return": float(np.median(terminal_return)),
         "expected_return": float(np.mean(terminal_return)),
     }
+
+
+def monte_carlo_score(
+    df: pd.DataFrame,
+    horizon: int = 20,
+    simulations: int = 1000,
+    lookback: int = 252,
+    stride: int = 5,
+    seed: int = 42,
+) -> pd.Series:
+    """Đưa kết quả Monte Carlo lên cùng thang [-100, 100] với các Score khác.
+
+    Công thức mô phỏng không đổi: `monte_carlo_summary` được gọi trên cửa sổ giá
+    quá khứ mỗi `stride` phiên, và xác suất tăng được ánh xạ tuyến tính thành
+    ``100 * (2 * p_up - 1)``. Đây chỉ là phép đổi thang để so sánh, không phải một
+    mô hình mới.
+    """
+    out = pd.Series(np.nan, index=df.index, dtype=float)
+
+    for _, group in df.groupby("symbol", sort=False):
+        ordered = group.sort_values("date")
+        closes = ordered["close"]
+        values = np.full(len(ordered), np.nan)
+        current = np.nan
+
+        for i in range(len(ordered)):
+            if i >= 60 and (i - 60) % max(1, stride) == 0:
+                window = closes.iloc[max(0, i - lookback + 1): i + 1]
+                p_up = monte_carlo_summary(
+                    window,
+                    horizon=horizon,
+                    simulations=simulations,
+                    seed=seed,
+                )["p_up"]
+                current = np.nan if pd.isna(p_up) else 100.0 * (2.0 * float(p_up) - 1.0)
+            values[i] = current
+
+        out.loc[ordered.index] = values
+
+    return out
