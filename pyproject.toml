@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-quant"
+version = "0.1.0"
+description = "Multi-symbol quantitative stock analysis and model validation framework"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "scipy>=1.12",
+  "scikit-learn>=1.4",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.35"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+include = ["stock_quant*"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
