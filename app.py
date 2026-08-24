@@ -15,24 +15,35 @@ data_mode = st.radio(
     horizontal=True,
 )
 
-api_key = ""
+registered_ready = VnstockClient.registered_package_available()
+
 if data_mode == "API miễn phí":
     st.caption(
-        "Dùng thư viện vnstock Community. Dữ liệu lịch sử được tải theo từng đoạn "
-        "để tránh giới hạn số lượng nến trong một lần gọi."
+        "Sử dụng thư viện vnstock. Dữ liệu lịch sử được gọi theo từng đoạn "
+        "để tránh giới hạn số lượng nến trong một lần truy vấn."
     )
 else:
-    api_key = st.text_input(
+    st.text_input(
         "API Key đã đăng ký",
         type="password",
-        help=(
-            "Chế độ này sử dụng thư viện vnstock_data đã được cài đặt từ trình cài đặt "
-            "chính thức của Vnstock. API Key chỉ dùng trong phiên chạy hiện tại."
-        ),
+        disabled=True,
+        placeholder="API Key được quản lý bởi vnstock_data",
     )
-    st.caption(
-        "Không ghi API Key vào GitHub hoặc file cấu hình của dự án."
-    )
+
+    if registered_ready:
+        st.success(
+            "Đã phát hiện vnstock_data trong môi trường hiện tại. "
+            "Có thể sử dụng nguồn dữ liệu đã đăng ký."
+        )
+    else:
+        st.error(
+            "Chưa phát hiện vnstock_data trong Codespaces. "
+            "API Key hợp lệ không thể thay thế thư viện dữ liệu đã đăng ký."
+        )
+        st.caption(
+            "Chọn API miễn phí để chạy ngay. Chế độ API đã đăng ký chỉ hoạt động "
+            "sau khi vnstock_data được cài vào đúng môi trường Python đang chạy Streamlit."
+        )
 
 symbols_text = st.text_input("Mã cổ phiếu", value="VIC")
 start = st.date_input("Ngày bắt đầu", value=None)
@@ -53,24 +64,36 @@ if st.button("Tải dữ liệu và phân tích"):
         st.error("Cần chọn ngày bắt đầu và ngày kết thúc")
         st.stop()
 
-    if data_mode == "API đã đăng ký" and not api_key:
-        st.error("Cần nhập API Key cho chế độ API đã đăng ký")
+    if data_mode == "API đã đăng ký" and not registered_ready:
+        st.error(
+            "Không thể gọi API đã đăng ký vì vnstock_data chưa được cài "
+            "trong môi trường Streamlit hiện tại."
+        )
         st.stop()
 
-    try:
-        mode = "registered" if data_mode == "API đã đăng ký" else "free"
+    mode = "registered" if data_mode == "API đã đăng ký" else "free"
 
+    try:
         with st.spinner("Đang tải dữ liệu..."):
-            client = VnstockClient(mode=mode, api_key=api_key or None)
-            prices = client.fetch_price_history(symbols, str(start), str(end))
+            client = VnstockClient(mode=mode)
+            prices = client.fetch_price_history(
+                symbols,
+                str(start),
+                str(end),
+            )
 
         validation = validate_price_frame(prices)
         if not validation.valid:
-            st.error("Dữ liệu không hợp lệ: " + "; ".join(validation.errors))
+            st.error(
+                "Dữ liệu không hợp lệ: "
+                + "; ".join(validation.errors)
+            )
             st.stop()
 
         if prices.empty:
-            st.warning("Không có dữ liệu trả về cho mã và khoảng thời gian đã chọn")
+            st.warning(
+                "Không có dữ liệu trả về cho mã và khoảng thời gian đã chọn"
+            )
             st.stop()
 
         counts = prices.groupby("symbol").size().rename("observations")
@@ -80,10 +103,12 @@ if st.button("Tải dữ liệu và phân tích"):
         insufficient = counts[counts < 130]
         if not insufficient.empty:
             detail = ", ".join(
-                f"{symbol}: {count} phiên" for symbol, count in insufficient.items()
+                f"{symbol}: {count} phiên"
+                for symbol, count in insufficient.items()
             )
             st.warning(
-                "Một số mã chưa đủ lịch sử cho toàn bộ mô hình: " + detail
+                "Một số mã chưa đủ lịch sử cho toàn bộ mô hình: "
+                + detail
             )
 
         with st.spinner("Đang chạy 9 mô hình..."):
@@ -97,7 +122,10 @@ if st.button("Tải dữ liệu và phân tích"):
     st.caption(
         "Future Return tại ngày mới nhất không có giá trị vì chưa tồn tại dữ liệu tương lai."
     )
-    st.dataframe(latest_analysis(result, symbols), use_container_width=True)
+    st.dataframe(
+        latest_analysis(result, symbols),
+        use_container_width=True,
+    )
 
     st.subheader("Tương quan giữa các Score")
     corr = correlation_matrix(result)
@@ -113,7 +141,9 @@ if st.button("Tải dữ liệu và phân tích"):
 
         pairs = highly_correlated_pairs(corr_display)
         if pairs.empty:
-            st.info("Chưa phát hiện cặp Score có tương quan tuyệt đối từ 0,70 trở lên")
+            st.info(
+                "Chưa phát hiện cặp Score có tương quan tuyệt đối từ 0,70 trở lên"
+            )
         else:
             st.warning("Các Score có tương quan cao")
             st.dataframe(pairs, use_container_width=True)
