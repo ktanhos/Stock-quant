@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import pandas as pd
 
+from stock_quant.consensus.perspectives import SCORE_KEYS
+
 
 def score_columns(df: pd.DataFrame) -> list[str]:
-    prefixes = (
-        "mc_score", "tsm_score", "vrh_score", "exp_score", "mr_score",
-        "man_score", "vsf_score", "tail_score", "vol_score",
-    )
-    return [c for c in df.columns if c in prefixes]
+    """Các cột Score của 9 mô hình, theo đúng thứ tự trong registry góc nhìn."""
+    return [key for key in SCORE_KEYS if key in df.columns]
 
 
 def correlation_matrix(df: pd.DataFrame) -> pd.DataFrame:

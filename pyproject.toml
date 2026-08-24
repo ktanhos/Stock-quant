@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 app = ["streamlit>=1.35"]
-dev = ["pytest>=8.0", "ruff>=0.5"]
+dev = ["pytest>=8.0", "ruff>=0.5", "streamlit>=1.35"]
 
 [tool.setuptools.packages.find]
 include = ["stock_quant*"]
