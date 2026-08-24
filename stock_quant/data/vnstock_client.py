@@ -8,19 +8,18 @@ from .schema import normalize_symbols
 
 
 class VnstockClient:
-    """Adapter for Vnstock with optional API key authentication."""
+    """Adapter for Vnstock 4 Unified UI."""
 
     def __init__(self, api_key: str | None = None) -> None:
         try:
-            from vnstock import Vnstock, register_user  # type: ignore
+            from vnstock.ui import Market  # type: ignore
         except ImportError as exc:
-            raise ImportError("Install or upgrade vnstock before using VnstockClient") from exc
+            raise ImportError(
+                "Vnstock 4 is required. Install or upgrade with: pip install -U vnstock"
+            ) from exc
 
-        api_key = (api_key or "").strip()
-        if api_key:
-            register_user(api_key=api_key)
-
-        self._Vnstock = Vnstock
+        self._Market = Market
+        self._api_key = (api_key or "").strip()
 
     def fetch_price_history(
         self,
@@ -29,15 +28,19 @@ class VnstockClient:
         end: str,
     ) -> pd.DataFrame:
         rows: list[pd.DataFrame] = []
+        market = self._Market()
 
         for symbol in normalize_symbols(symbols):
-            stock = self._Vnstock().stock(symbol=symbol)
-            history = stock.quote.history(start=start, end=end)
+            history = market.equity(symbol).ohlcv(
+                start=start,
+                end=end,
+                interval="1D",
+            )
 
             if history is None or history.empty:
                 continue
 
-            frame = history.copy().rename(columns={"time": "date", "ticker": "symbol"})
+            frame = history.copy().rename(columns={"time": "date"})
             frame["symbol"] = symbol
 
             required = ["symbol", "date", "open", "high", "low", "close", "volume"]
@@ -46,6 +49,14 @@ class VnstockClient:
                 raise ValueError(
                     f"Vnstock returned incomplete OHLCV data for {symbol}: {missing}"
                 )
+
+            frame["date"] = pd.to_datetime(frame["date"])
+            for column in ["open", "high", "low", "close", "volume"]:
+                frame[column] = pd.to_numeric(frame[column], errors="coerce")
+
+            frame = frame.dropna(
+                subset=["date", "open", "high", "low", "close", "volume"]
+            )
 
             if "value" not in frame.columns:
                 frame["value"] = frame["close"] * frame["volume"]
@@ -58,7 +69,16 @@ class VnstockClient:
 
         if not rows:
             return pd.DataFrame(
-                columns=["symbol", "date", "open", "high", "low", "close", "volume", "value"]
+                columns=[
+                    "symbol",
+                    "date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "value",
+                ]
             )
 
         return (
