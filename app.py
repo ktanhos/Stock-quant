@@ -190,7 +190,7 @@ def render_symbol(report) -> None:
                         }
                     )
                     .round({"Tương quan": 2}),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 
@@ -198,10 +198,10 @@ def render_symbol(report) -> None:
                 index=lambda k: PERSPECTIVES_BY_KEY[k].name if k in PERSPECTIVES_BY_KEY else k,
                 columns=lambda k: PERSPECTIVES_BY_KEY[k].name if k in PERSPECTIVES_BY_KEY else k,
             )
-            st.dataframe(display.style.format("{:.2f}"), use_container_width=True)
+            st.dataframe(display.style.format("{:.2f}"), width="stretch")
 
     with st.expander("Số liệu gốc của 9 mô hình"):
-        st.dataframe(views_table(report), use_container_width=True, hide_index=True)
+        st.dataframe(views_table(report), width="stretch", hide_index=True)
 
 
 st.title("Stock Quant")
@@ -232,7 +232,7 @@ with st.sidebar:
         value=0.70,
         step=0.05,
     )
-    run = st.button("Phân tích", type="primary", use_container_width=True)
+    run = st.button("Phân tích", type="primary", width="stretch")
 
 if run:
     symbols = [
@@ -314,7 +314,7 @@ if not insufficient.empty:
 if len(reports) > 1:
     st.subheader("Tổng quan đồng thuận")
     st.caption("Các con số là số lượng góc nhìn trong từng nhóm, không phải điểm tổng hợp.")
-    st.dataframe(consensus_overview(reports), use_container_width=True, hide_index=True)
+    st.dataframe(consensus_overview(reports), width="stretch", hide_index=True)
 
 st.subheader("Chi tiết theo mã")
 tabs = st.tabs([report.symbol for report in reports])
@@ -326,4 +326,4 @@ with st.expander("Bảng Score gốc tại phiên gần nhất"):
     st.caption(
         "Future Return tại phiên gần nhất không có giá trị vì chưa tồn tại dữ liệu tương lai."
     )
-    st.dataframe(latest_analysis(result, symbols), use_container_width=True, hide_index=True)
+    st.dataframe(latest_analysis(result, symbols), width="stretch", hide_index=True)
