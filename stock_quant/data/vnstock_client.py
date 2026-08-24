@@ -10,7 +10,7 @@ from .schema import normalize_symbols
 
 
 class VnstockClient:
-    """Adapter for Vnstock Community and Vnstock Data."""
+    """Adapter supporting Vnstock Community and Vnstock Data."""
 
     def __init__(self, mode: str = "free", chunk_days: int = 90) -> None:
         if mode not in {"free", "registered"}:
@@ -18,22 +18,21 @@ class VnstockClient:
 
         self.mode = mode
         self.chunk_days = max(30, int(chunk_days))
-        self._Market = self._load_market()
+        self._provider = self._load_provider()
 
     @staticmethod
     def registered_package_available() -> bool:
         return importlib.util.find_spec("vnstock_data") is not None
 
-    def _load_market(self):
+    def _load_provider(self):
         if self.mode == "registered":
             try:
                 from vnstock_data import Market  # type: ignore
+                return Market
             except ImportError as exc:
                 raise ImportError(
-                    "Môi trường hiện tại chưa có thư viện vnstock_data. "
-                    "API Key hợp lệ không thể tự cài thư viện này."
+                    "Chưa cài vnstock_data trong môi trường Python đang chạy Streamlit."
                 ) from exc
-            return Market
 
         try:
             from vnstock.ui import Market  # type: ignore
@@ -44,17 +43,17 @@ class VnstockClient:
                 return Market
             except ImportError as exc:
                 raise ImportError(
-                    "Không tìm thấy thư viện vnstock. Chạy: pip install -U vnstock"
+                    "Không tìm thấy thư viện vnstock."
                 ) from exc
 
-    def _fetch_chunked(
+    def _fetch_free(
         self,
         market,
         symbol: str,
         start: pd.Timestamp,
         end: pd.Timestamp,
     ) -> pd.DataFrame:
-        frames: list[pd.DataFrame] = []
+        frames = []
         current = start
 
         while current <= end:
@@ -62,22 +61,34 @@ class VnstockClient:
                 current + timedelta(days=self.chunk_days - 1),
                 end,
             )
-
             history = market.equity(symbol).ohlcv(
                 start=current.strftime("%Y-%m-%d"),
                 end=chunk_end.strftime("%Y-%m-%d"),
                 interval="1D",
             )
-
             if history is not None and not history.empty:
                 frames.append(history.copy())
-
             current = chunk_end + timedelta(days=1)
 
-        if not frames:
-            return pd.DataFrame()
+        return (
+            pd.concat(frames, ignore_index=True)
+            if frames
+            else pd.DataFrame()
+        )
 
-        return pd.concat(frames, ignore_index=True)
+    def _fetch_registered(
+        self,
+        symbol: str,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+    ) -> pd.DataFrame:
+        # Unified UI của vnstock_data theo tài liệu chính thức.
+        history = self._provider.quote(symbol=symbol).history(
+            start=start.strftime("%Y-%m-%d"),
+            end=end.strftime("%Y-%m-%d"),
+            interval="1D",
+        )
+        return history.copy() if history is not None else pd.DataFrame()
 
     def fetch_price_history(
         self,
@@ -91,34 +102,32 @@ class VnstockClient:
         if start_ts > end_ts:
             raise ValueError("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc")
 
-        market = self._Market()
-        rows: list[pd.DataFrame] = []
+        market = self._provider() if self.mode == "free" else None
+        rows = []
 
         for symbol in normalize_symbols(symbols):
-            history = self._fetch_chunked(
-                market,
-                symbol,
-                start_ts,
-                end_ts,
-            )
+            if self.mode == "registered":
+                history = self._fetch_registered(symbol, start_ts, end_ts)
+            else:
+                history = self._fetch_free(
+                    market, symbol, start_ts, end_ts
+                )
 
             if history.empty:
                 continue
 
-            frame = history.rename(columns={"time": "date"}).copy()
+            frame = history.rename(
+                columns={"time": "date", "datetime": "date"}
+            ).copy()
             frame["symbol"] = symbol
 
             required = [
-                "symbol",
-                "date",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
+                "symbol", "date", "open", "high",
+                "low", "close", "volume",
             ]
             missing = [
-                column for column in required if column not in frame.columns
+                column for column in required
+                if column not in frame.columns
             ]
             if missing:
                 raise ValueError(
@@ -132,8 +141,7 @@ class VnstockClient:
 
             for column in ["open", "high", "low", "close", "volume"]:
                 frame[column] = pd.to_numeric(
-                    frame[column],
-                    errors="coerce",
+                    frame[column], errors="coerce"
                 )
 
             frame = frame.dropna(subset=required[1:])
@@ -148,14 +156,8 @@ class VnstockClient:
             rows.append(
                 frame[
                     [
-                        "symbol",
-                        "date",
-                        "open",
-                        "high",
-                        "low",
-                        "close",
-                        "volume",
-                        "value",
+                        "symbol", "date", "open", "high",
+                        "low", "close", "volume", "value",
                     ]
                 ]
             )
@@ -163,14 +165,8 @@ class VnstockClient:
         if not rows:
             return pd.DataFrame(
                 columns=[
-                    "symbol",
-                    "date",
-                    "open",
-                    "high",
-                    "low",
-                    "close",
-                    "volume",
-                    "value",
+                    "symbol", "date", "open", "high",
+                    "low", "close", "volume", "value",
                 ]
             )
 
