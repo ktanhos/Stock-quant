@@ -9,29 +9,52 @@ st.set_page_config(page_title="Stock Quant", layout="wide")
 st.title("Stock Quant")
 st.caption("Phân tích một hoặc nhiều cổ phiếu bằng 9 mô hình")
 
+api_key = st.text_input(
+    "Vnstock API Key",
+    type="password",
+    help="Khóa chỉ được dùng trong phiên chạy hiện tại và không được ghi vào repository.",
+)
+
 symbols_text = st.text_input("Mã cổ phiếu", value="MSR")
 start = st.date_input("Ngày bắt đầu", value=None)
 end = st.date_input("Ngày kết thúc", value=None)
 
 if st.button("Tải dữ liệu và phân tích"):
-    symbols = [s.strip().upper() for s in symbols_text.replace(",", " ").split() if s.strip()]
+    symbols = [
+        s.strip().upper()
+        for s in symbols_text.replace(",", " ").split()
+        if s.strip()
+    ]
+
     if not symbols:
         st.error("Chưa có mã cổ phiếu")
         st.stop()
+
     if start is None or end is None:
         st.error("Cần chọn ngày bắt đầu và ngày kết thúc")
         st.stop()
 
-    client = VnstockClient()
-    prices = client.fetch_price_history(symbols, str(start), str(end))
+    try:
+        with st.spinner("Đang xác thực và tải dữ liệu..."):
+            client = VnstockClient(api_key=api_key or None)
+            prices = client.fetch_price_history(symbols, str(start), str(end))
+    except Exception as exc:
+        st.error(f"Không thể tải dữ liệu Vnstock: {exc}")
+        st.stop()
+
     validation = validate_price_frame(prices)
     if not validation.valid:
         st.error("Dữ liệu không hợp lệ: " + "; ".join(validation.errors))
         st.stop()
 
-    result = run_signal_pipeline(prices)
+    with st.spinner("Đang chạy 9 mô hình..."):
+        result = run_signal_pipeline(prices)
+
     st.subheader("Phân tích hiện tại")
-    st.dataframe(latest_analysis(result, symbols), use_container_width=True)
+    st.dataframe(
+        latest_analysis(result, symbols),
+        use_container_width=True,
+    )
 
     st.subheader("Tương quan giữa các Score")
     corr = correlation_matrix(result)
@@ -39,7 +62,7 @@ if st.button("Tải dữ liệu và phân tích"):
 
     pairs = highly_correlated_pairs(corr)
     if pairs.empty:
-        st.info("Chưa phát hiện cặp Score có |correlation| >= 0,70")
+        st.info("Chưa phát hiện cặp Score có correlation tuyệt đối từ 0,70 trở lên")
     else:
         st.warning("Các Score có tương quan cao")
         st.dataframe(pairs, use_container_width=True)
