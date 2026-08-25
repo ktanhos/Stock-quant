@@ -1,3 +1,4 @@
+from .market_regime_fetcher import calculate_market_regime, fetch_vnindex_data
 from .schema import DataValidationResult, normalize_symbols, validate_price_frame
 from .store import load_frame, save_frame
 from .vnstock_client import VnstockClient
@@ -9,4 +10,6 @@ __all__ = [
     "load_frame",
     "save_frame",
     "VnstockClient",
+    "fetch_vnindex_data",
+    "calculate_market_regime",
 ]

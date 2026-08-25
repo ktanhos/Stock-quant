@@ -1,6 +1,18 @@
+from .market_context import build_market_regime
 from .momentum import mean_reversion_interpretation, mean_reversion_score, range_expansion_score, tsm_score
 from .persistence import persistence_features, persistence_score
-from .regime import classify_regime, directional_edge, regime_interpretation, risk_adjustment
+from .regime import (
+    STOCK_REGIME_CONSOLIDATION,
+    STOCK_REGIME_DOWNTREND,
+    STOCK_REGIME_EXPANSION,
+    STOCK_REGIME_MEAN_REVERSION,
+    STOCK_REGIME_UPTREND,
+    classify_regime,
+    directional_edge,
+    regime_interpretation,
+    regime_risk,
+    risk_adjustment,
+)
 from .risk import (
     manipulation_guard_score,
     monte_carlo_full_display,
@@ -19,8 +31,15 @@ __all__ = [
     "persistence_score",
     "classify_regime",
     "regime_interpretation",
+    "regime_risk",
     "directional_edge",
     "risk_adjustment",
+    "build_market_regime",
+    "STOCK_REGIME_UPTREND",
+    "STOCK_REGIME_EXPANSION",
+    "STOCK_REGIME_MEAN_REVERSION",
+    "STOCK_REGIME_DOWNTREND",
+    "STOCK_REGIME_CONSOLIDATION",
     "ewma_volatility",
     "yang_zhang_volatility",
     "volatility_score",
