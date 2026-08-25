@@ -325,6 +325,77 @@ def create_score_distribution(result_df, symbol: str):
     return fig
 
 
+def create_ic_heatmap(ic_matrix_data):
+    """Create interactive IC heatmap with color coding."""
+    fig = go.Figure(data=go.Heatmap(
+        z=ic_matrix_data.values,
+        x=ic_matrix_data.columns,
+        y=ic_matrix_data.index,
+        colorscale='RdYlGn',
+        zmid=0,
+        text=ic_matrix_data.values.round(3),
+        texttemplate='%{text:.3f}',
+        textfont={"size": 10},
+        colorbar=dict(title="IC"),
+        hovertemplate='%{y} → %{x}<br>IC: %{z:.4f}<extra></extra>'
+    ))
+    fig.update_layout(
+        height=400,
+        margin=dict(l=150, r=50, t=50, b=100),
+        font=dict(size=11),
+        hovermode='closest',
+        title_text="Information Coefficient Matrix",
+    )
+    return fig
+
+
+def render_dashboard_overview(reports, impacts):
+    """Render a comprehensive dashboard overview of key metrics."""
+    st.markdown("## 📊 Dashboard Overview")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    total_views = sum(len(report.views) for report in reports)
+    total_symbols = len(reports)
+    avg_agreement = np.mean([len(report.agreement_groups) for report in reports]) if reports else 0
+    avg_ic = np.mean([impacts[report.symbol].ic_matrix().values.flatten()[~np.isnan(impacts[report.symbol].ic_matrix().values.flatten())].mean()
+                      for report in reports if report.symbol in impacts and impacts[report.symbol].has_data]) if reports else 0
+
+    with col1:
+        st.markdown(f'''
+        <div class="sq-metric-card">
+            <div class="sq-metric-value">{total_views}</div>
+            <div class="sq-metric-label">Tổng góc nhìn</div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f'''
+        <div class="sq-metric-card">
+            <div class="sq-metric-value">{total_symbols}</div>
+            <div class="sq-metric-label">Mã phân tích</div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f'''
+        <div class="sq-metric-card">
+            <div class="sq-metric-value">{avg_agreement:.1f}</div>
+            <div class="sq-metric-label">Nhóm đồng thuận</div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    with col4:
+        st.markdown(f'''
+        <div class="sq-metric-card">
+            <div class="sq-metric-value">{avg_ic:.3f}</div>
+            <div class="sq-metric-label">IC trung bình</div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    st.markdown('<div class="sq-divider"></div>', unsafe_allow_html=True)
+
+
 def render_view_card(view) -> str:
     tone = stance_tone(view.perspective, view.stance)
     score = "—" if view.score is None else f"{view.score:+.0f}".replace("-", "−")
@@ -511,7 +582,13 @@ def render_score_impact(impact, scope_key: str) -> None:
     )
 
     ic_matrix = impact.ic_matrix().round(3)
-    st.dataframe(ic_matrix, width="stretch", use_container_width=True)
+
+    tab_viz, tab_table = st.tabs(["📈 Biểu đồ", "📋 Bảng"])
+    with tab_viz:
+        ic_heatmap = create_ic_heatmap(ic_matrix)
+        st.plotly_chart(ic_heatmap, use_container_width=True)
+    with tab_table:
+        st.dataframe(ic_matrix, width="stretch", use_container_width=True)
 
     st.markdown('<div class="sq-divider"></div>', unsafe_allow_html=True)
 
@@ -734,41 +811,78 @@ st.caption(
 )
 
 with st.sidebar:
-    st.header("Dữ liệu")
-    data_mode = st.radio("Nguồn dữ liệu", options=["API miễn phí", "API đã đăng ký"])
+    st.markdown("""
+    <style>
+    .sidebar-section {
+        padding: 1rem 0;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+    }
+    .sidebar-section:last-child {
+        border-bottom: none;
+    }
+    .sidebar-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">📊 Nguồn Dữ liệu</div>', unsafe_allow_html=True)
+    data_mode = st.radio("Chọn API", options=["API miễn phí", "API đã đăng ký"], label_visibility="collapsed")
     if data_mode == "API miễn phí":
-        st.caption("Thư viện vnstock theo kiến trúc Unified UI.")
+        st.caption("✓ Thư viện vnstock theo kiến trúc Unified UI.")
     else:
         st.caption(
-            "Thư viện vnstock_data theo cùng kiến trúc Unified UI. "
+            "✓ Thư viện vnstock_data theo cùng kiến trúc Unified UI. "
             "Thông tin xác thực do thư viện đã cài đặt quản lý."
         )
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">🔍 Tìm kiếm</div>', unsafe_allow_html=True)
     symbols_text = st.text_input(
         "Mã cổ phiếu",
         value="VIC",
         help="Một hoặc nhiều mã, cách nhau bởi dấu cách hoặc dấu phẩy",
+        label_visibility="collapsed"
     )
-    start = st.date_input("Ngày bắt đầu", value=None)
-    end = st.date_input("Ngày kết thúc", value=None)
+    col_start, col_end = st.columns(2)
+    with col_start:
+        start = st.date_input("Từ ngày", value=None, label_visibility="collapsed")
+    with col_end:
+        end = st.date_input("Đến ngày", value=None, label_visibility="collapsed")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.header("Tham số phân tích")
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-title">⚙️ Tham số phân tích</div>', unsafe_allow_html=True)
+    st.caption("Ngưỡng tương quan và cửa sổ thời gian IC")
+
     overlap_threshold = st.slider(
-        "Ngưỡng thông tin chung |correlation|",
+        "Ngưỡng |correlation|",
         min_value=0.50,
         max_value=0.95,
         value=0.70,
         step=0.05,
+        label_visibility="collapsed"
     )
+
     ic_window = st.slider(
-        "Cửa sổ IC theo thời gian (phiên)",
+        "Cửa sổ IC (phiên)",
         min_value=60,
         max_value=250,
         value=DEFAULT_WINDOW,
         step=10,
         help="Cửa sổ tự co lại khi lịch sử của mã ngắn hơn hai lần giá trị này",
+        label_visibility="collapsed"
     )
-    run = st.button("Phân tích", type="primary", width="stretch")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    run = st.button("🚀 Phân tích", type="primary", width="stretch")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if run:
     symbols = [
@@ -837,16 +951,16 @@ counts: pd.Series = st.session_state["counts"]
 reports = consensus_report(result, symbols, overlap_threshold=overlap_threshold)
 
 if not reports:
-    st.warning("Không có mã nào đủ dữ liệu để phân tích đồng thuận")
+    st.warning("⚠️ Không có mã nào đủ dữ liệu để phân tích đồng thuận")
     st.stop()
 
 insufficient = counts[counts < MIN_HISTORY]
 if not insufficient.empty:
     detail = ", ".join(f"{symbol}: {count} phiên" for symbol, count in insufficient.items())
-    st.warning("Một số mã chưa đủ lịch sử cho toàn bộ mô hình: " + detail)
+    st.warning("⚠️ Một số mã chưa đủ lịch sử cho toàn bộ mô hình: " + detail)
 
 report_symbols = tuple(report.symbol for report in reports)
-with st.spinner("Đang đo tác động của từng Score..."):
+with st.spinner("⏳ Đang đo tác động của từng Score..."):
     impacts = build_impacts(result, report_symbols, ic_window)
 
 signal_tab, impact_tab, correlation_tab, consensus_tab = st.tabs(
@@ -854,6 +968,8 @@ signal_tab, impact_tab, correlation_tab, consensus_tab = st.tabs(
 )
 
 with signal_tab:
+    render_dashboard_overview(reports, impacts)
+
     st.markdown("## 📊 Current Signal")
     st.caption("🔍 Trạng thái của 9 góc nhìn tại phiên gần nhất.")
     st.markdown('<div class="sq-divider"></div>', unsafe_allow_html=True)
