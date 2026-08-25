@@ -357,9 +357,23 @@ def render_dashboard_overview(reports, impacts):
 
     total_views = sum(len(report.views) for report in reports)
     total_symbols = len(reports)
-    avg_agreement = np.mean([len(report.agreement_groups) for report in reports]) if reports else 0
-    avg_ic = np.mean([impacts[report.symbol].ic_matrix().values.flatten()[~np.isnan(impacts[report.symbol].ic_matrix().values.flatten())].mean()
-                      for report in reports if report.symbol in impacts and impacts[report.symbol].has_data]) if reports else 0
+
+    avg_agreement = 0
+    if reports:
+        agreement_counts = [len(report.agreement_groups) for report in reports]
+        avg_agreement = np.mean(agreement_counts) if agreement_counts else 0
+
+    avg_ic = 0
+    if reports:
+        ic_values = []
+        for report in reports:
+            if report.symbol in impacts and impacts[report.symbol].has_data:
+                ic_matrix = impacts[report.symbol].ic_matrix()
+                ic_flat = ic_matrix.values.flatten()
+                valid_ic = ic_flat[~np.isnan(ic_flat)]
+                if len(valid_ic) > 0:
+                    ic_values.append(valid_ic.mean())
+        avg_ic = np.mean(ic_values) if ic_values else 0
 
     with col1:
         st.markdown(f'''
@@ -381,7 +395,7 @@ def render_dashboard_overview(reports, impacts):
         st.markdown(f'''
         <div class="sq-metric-card">
             <div class="sq-metric-value">{avg_agreement:.1f}</div>
-            <div class="sq-metric-label">Nhóm đồng thuận</div>
+            <div class="sq-metric-label">Nhóm đồng thuận TB</div>
         </div>
         ''', unsafe_allow_html=True)
 
@@ -922,45 +936,53 @@ if run:
     ]
 
     if not symbols:
-        st.error("Chưa có mã cổ phiếu")
+        st.error("❌ Vui lòng nhập ít nhất một mã cổ phiếu")
         st.stop()
 
     if start is None or end is None:
-        st.error("Cần chọn ngày bắt đầu và ngày kết thúc")
+        st.error("❌ Vui lòng chọn cả ngày bắt đầu và ngày kết thúc")
+        st.stop()
+
+    if start >= end:
+        st.error("❌ Ngày bắt đầu phải trước ngày kết thúc")
         st.stop()
 
     mode = "registered" if data_mode == "API đã đăng ký" else "free"
 
     try:
-        with st.spinner("Đang tải dữ liệu..."):
+        with st.spinner("⏳ Đang tải dữ liệu từ API..."):
             client = VnstockClient(mode=mode)
             prices = client.fetch_price_history(symbols, str(start), str(end))
 
         validation = validate_price_frame(prices)
         if not validation.valid:
-            st.error("Dữ liệu không hợp lệ: " + "; ".join(validation.errors))
+            st.error("❌ Dữ liệu không hợp lệ:\n" + "\n".join(f"• {error}" for error in validation.errors))
             st.stop()
 
         if prices.empty:
-            st.warning("Không có dữ liệu trả về cho mã và khoảng thời gian đã chọn")
+            st.warning("⚠️ Không có dữ liệu trả về cho mã và khoảng thời gian đã chọn")
             st.stop()
 
-        with st.spinner("Đang chạy 9 mô hình..."):
+        with st.spinner("⏳ Đang chạy 9 mô hình phân tích..."):
             result = run_signal_pipeline(prices)
+
+        st.success(f"✅ Phân tích thành công! Xử lý {len(symbols)} mã cổ phiếu")
 
     except ImportError as exc:
         if mode == "registered":
             st.error(
-                "Không thể sử dụng nguồn dữ liệu đã đăng ký vì môi trường Streamlit "
-                "chưa có thư viện vnstock_data. Hãy cài vnstock_data theo trình cài "
-                "đặt chính thức của Vnstock trong đúng môi trường Python đang chạy Streamlit."
+                "❌ **Lỗi Library:** Không thể sử dụng API đã đăng ký\n\n"
+                "Vui lòng cài đặt vnstock_data theo hướng dẫn chính thức."
             )
-            st.code(str(exc))
+            with st.expander("📋 Chi tiết lỗi"):
+                st.code(str(exc))
         else:
-            st.error(f"Không thể tải dữ liệu: {exc}")
+            st.error(f"❌ **Lỗi tải dữ liệu:** {exc}")
         st.stop()
     except Exception as exc:
-        st.error(f"Không thể tải hoặc phân tích dữ liệu: {exc}")
+        st.error(f"❌ **Lỗi xử lý:** Không thể tải hoặc phân tích dữ liệu")
+        with st.expander("📋 Chi tiết lỗi"):
+            st.code(str(exc))
         st.stop()
 
     st.session_state["result"] = result
