@@ -34,3 +34,37 @@ def risk_adjustment(df: pd.DataFrame) -> pd.Series:
     manipulation = df["man_score"].fillna(0.0)
     vol = df["vsf_score"].fillna(0.0).abs()
     return (100.0 - 0.35 * vol - 0.35 * np.maximum(0.0, -tail) - 0.30 * np.maximum(0.0, -manipulation)).clip(0, 100)
+
+
+def regime_interpretation(df: pd.DataFrame) -> pd.DataFrame:
+    """Provide regime context: label, confidence, and character description.
+
+    Returns a DataFrame with columns:
+    - regime_label: descriptive regime name
+    - regime_strength: confidence in regime classification [0, 100]
+    - regime_description: brief character description
+    """
+    out = pd.DataFrame(index=df.index)
+    regime = classify_regime(df)
+    out["regime_label"] = regime
+
+    # Calculate regime strength based on signal spread
+    trend = df.get("vrh_score", pd.Series(0.0, index=df.index)).fillna(0.0)
+    stretch = df.get("mr_score", pd.Series(0.0, index=df.index)).fillna(0.0)
+    expansion = df.get("exp_score", pd.Series(0.0, index=df.index)).fillna(0.0)
+
+    # Strength: how clearly do scores confirm the regime?
+    trend_strength = (trend.abs() / 100.0).clip(0, 1.0)
+    expansion_strength = (expansion.abs() / 100.0).clip(0, 1.0)
+    stretch_strength = (stretch.abs() / 100.0).clip(0, 1.0)
+
+    out["regime_strength"] = 100.0 * (trend_strength + expansion_strength + stretch_strength) / 3.0
+
+    # Regime character description
+    out["regime_description"] = "Trung tính"
+    out.loc[regime == "trend_expansion", "regime_description"] = "Xu hướng mở rộng"
+    out.loc[regime == "mean_reversion", "regime_description"] = "Quay về trung bình"
+    out.loc[regime == "high_expansion_uncertain", "regime_description"] = "Mở rộng cao nhưng không rõ"
+    out.loc[regime == "range", "regime_description"] = "Đi trong biên độ"
+
+    return out

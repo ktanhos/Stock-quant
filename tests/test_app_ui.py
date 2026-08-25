@@ -13,7 +13,7 @@ from tests.test_consensus import make_prices  # noqa: E402
 
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
 
-LAYERS = ("Current Signal", "Score Impact", "Correlation", "Consensus")
+LAYERS = ("Current Signal", "Score Impact", "Correlation", "Consensus", "Research")
 
 
 def build_app(symbols=("MSR", "FPT"), periods=300) -> AppTest:
@@ -60,7 +60,7 @@ def test_app_renders_the_four_reading_layers(app):
     assert not app.exception
     labels = [tab.label for tab in app.tabs]
     for layer in LAYERS:
-        assert layer in labels
+        assert any(layer in label for label in labels)  # Handle emojis in labels
 
 
 def test_every_layer_has_a_tab_for_each_symbol(app):

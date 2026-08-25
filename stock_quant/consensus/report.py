@@ -24,13 +24,16 @@ from .overlap import (
     cluster_of,
 )
 from .perspectives import (
+    CONFIRMATION,
     CONTEXT,
     DIRECTIONAL,
     NEGATIVE,
     NEUTRAL,
     POSITIVE,
     PERSPECTIVES,
+    PROBABILISTIC,
     RISK,
+    RISK_CONTEXT,
     ROLE_LABELS,
     ROLE_ORDER,
     UNAVAILABLE,
@@ -193,22 +196,22 @@ def _agreement_groups(views: tuple[ViewStance, ...]) -> tuple[ConsensusGroup, ..
         if len(members) >= 2:
             groups.append(ConsensusGroup(label, stance, DIRECTIONAL, members))
 
-    context = [v for v in views if v.role == CONTEXT and v.available]
+    confirmation = [v for v in views if v.role in (CONTEXT, CONFIRMATION) and v.available]
     for stance, label in (
         (POSITIVE, "Bối cảnh mở rộng và có quán tính"),
         (NEGATIVE, "Bối cảnh co hẹp và hay đảo chiều"),
     ):
-        members = tuple(v for v in context if v.stance == stance)
+        members = tuple(v for v in confirmation if v.stance == stance)
         if len(members) >= 2:
-            groups.append(ConsensusGroup(label, stance, CONTEXT, members))
+            groups.append(ConsensusGroup(label, stance, CONFIRMATION, members))
 
-    risk = [v for v in views if v.role == RISK and v.available]
+    risk = [v for v in views if v.role in (RISK, RISK_CONTEXT) and v.available]
     warnings = tuple(v for v in risk if v.perspective.is_unfavorable(v.stance))
     if len(warnings) >= 2:
-        groups.append(ConsensusGroup("Đồng thuận cảnh báo rủi ro", NEGATIVE, RISK, warnings))
+        groups.append(ConsensusGroup("Đồng thuận cảnh báo rủi ro", NEGATIVE, RISK_CONTEXT, warnings))
     calm = tuple(v for v in risk if v.perspective.is_favorable(v.stance))
     if len(calm) >= 2:
-        groups.append(ConsensusGroup("Đồng thuận rủi ro trong tầm kiểm soát", POSITIVE, RISK, calm))
+        groups.append(ConsensusGroup("Đồng thuận rủi ro trong tầm kiểm soát", POSITIVE, RISK_CONTEXT, calm))
 
     return tuple(groups)
 
@@ -273,7 +276,7 @@ def _conflicts(views: tuple[ViewStance, ...]) -> tuple[ConflictNote, ...]:
         )
 
     risk_warnings = [
-        v for v in views if v.role == RISK and v.available and v.perspective.is_unfavorable(v.stance)
+        v for v in views if v.role in (RISK, RISK_CONTEXT) and v.available and v.perspective.is_unfavorable(v.stance)
     ]
     if bullish and risk_warnings:
         names = _join(v.name for v in risk_warnings)

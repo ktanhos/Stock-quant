@@ -33,6 +33,12 @@ from stock_quant.impact import (
     score_impact,
     stability_table,
 )
+from stock_quant.research.score_research import (
+    create_horizon_heatmap,
+    create_score_scatter,
+    create_score_timeseries_chart,
+    score_research_summary,
+)
 
 st.set_page_config(page_title="Stock Quant · Consensus", layout="wide", initial_sidebar_state="expanded")
 
@@ -1041,8 +1047,8 @@ report_symbols = tuple(report.symbol for report in reports)
 with st.spinner("⏳ Đang đo tác động của từng Score..."):
     impacts = build_impacts(result, report_symbols, ic_window)
 
-signal_tab, impact_tab, correlation_tab, consensus_tab = st.tabs(
-    ["📊 Current Signal", "📈 Score Impact", "🔗 Correlation", "💡 Consensus"]
+signal_tab, impact_tab, correlation_tab, consensus_tab, research_tab = st.tabs(
+    ["📊 Current Signal", "📈 Score Impact", "🔗 Correlation", "💡 Consensus", "🔬 Research"]
 )
 
 with signal_tab:
@@ -1116,3 +1122,70 @@ with consensus_tab:
                 st.markdown('#### 📌 Ghi chú bổ sung')
                 for note in report.notes:
                     st.caption(f"• {note}")
+
+with research_tab:
+    st.markdown("## 🔬 Research")
+    st.caption("📊 Nghiên cứu mối quan hệ giữa Score và Future Return.")
+    st.markdown('<div class="sq-divider"></div>', unsafe_allow_html=True)
+
+    score_keys = [k for k in ["tsm_score", "vol_score", "mr_score", "exp_score", "vrh_score",
+                             "vsf_score", "tail_score", "man_score", "mc_score"] if k in result.columns]
+
+    if len(report_symbols) > 1:
+        for tab, sym in zip(st.tabs(list(report_symbols)), report_symbols):
+            with tab:
+                sym_data = result[result["symbol"] == sym]
+
+                st.subheader("📈 Score & Price Time Series")
+                selected_score = st.selectbox("Chọn Score", score_keys, key=f"score_select_{sym}")
+                fig_ts = create_score_timeseries_chart(sym_data, selected_score)
+                st.plotly_chart(fig_ts, use_container_width=True)
+
+                st.subheader("🎯 Score vs Future Return (Scatter)")
+                col1, col2 = st.columns(2)
+                with col1:
+                    selected_horizon = st.selectbox("Horizon", [5, 20, 60], key=f"horizon_select_{sym}")
+                with col2:
+                    selected_score_scatter = st.selectbox("Score", score_keys, key=f"score_scatter_{sym}")
+
+                fig_scatter, stats = create_score_scatter(sym_data, selected_score_scatter, horizon=selected_horizon)
+                st.plotly_chart(fig_scatter, use_container_width=True)
+
+                if not pd.isna(stats.get("correlation")):
+                    st.caption(f"Correlation: {stats['correlation']:.3f} | p-value: {stats['p_value']:.4f}")
+
+                st.subheader("🔥 Horizon Heatmap")
+                fig_heatmap = create_horizon_heatmap(sym_data, score_keys=score_keys, horizons=(5, 10, 20, 60))
+                st.plotly_chart(fig_heatmap, use_container_width=True)
+
+                st.subheader("📋 Score-Return Summary")
+                summary_table = score_research_summary(sym_data, score_keys=score_keys, horizons=(5, 20, 60))
+                st.dataframe(summary_table, use_container_width=True, hide_index=True)
+    else:
+        sym_data = result
+
+        st.subheader("📈 Score & Price Time Series")
+        selected_score = st.selectbox("Chọn Score", score_keys)
+        fig_ts = create_score_timeseries_chart(sym_data, selected_score)
+        st.plotly_chart(fig_ts, use_container_width=True)
+
+        st.subheader("🎯 Score vs Future Return (Scatter)")
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_horizon = st.selectbox("Horizon", [5, 20, 60])
+        with col2:
+            selected_score_scatter = st.selectbox("Score", score_keys)
+
+        fig_scatter, stats = create_score_scatter(sym_data, selected_score_scatter, horizon=selected_horizon)
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+        if not pd.isna(stats.get("correlation")):
+            st.caption(f"Correlation: {stats['correlation']:.3f} | p-value: {stats['p_value']:.4f}")
+
+        st.subheader("🔥 Horizon Heatmap")
+        fig_heatmap = create_horizon_heatmap(sym_data, score_keys=score_keys, horizons=(5, 10, 20, 60))
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+
+        st.subheader("📋 Score-Return Summary")
+        summary_table = score_research_summary(sym_data, score_keys=score_keys, horizons=(5, 20, 60))
+        st.dataframe(summary_table, use_container_width=True, hide_index=True)
