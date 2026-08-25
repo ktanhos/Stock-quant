@@ -11,14 +11,20 @@ from dataclasses import dataclass
 DIRECTIONAL = "directional"
 CONTEXT = "context"
 RISK = "risk"
+CONFIRMATION = "confirmation"
+RISK_CONTEXT = "risk_context"
+PROBABILISTIC = "probabilistic"
 
 ROLE_LABELS = {
     DIRECTIONAL: "Hướng giá",
     CONTEXT: "Bối cảnh thị trường",
     RISK: "Rủi ro",
+    CONFIRMATION: "Xác nhận",
+    RISK_CONTEXT: "Bối cảnh rủi ro",
+    PROBABILISTIC: "Xác suất",
 }
 
-ROLE_ORDER = (DIRECTIONAL, CONTEXT, RISK)
+ROLE_ORDER = (DIRECTIONAL, CONFIRMATION, RISK_CONTEXT, PROBABILISTIC)
 
 POSITIVE = "positive"
 NEUTRAL = "neutral"
@@ -116,7 +122,7 @@ PERSPECTIVES: tuple[Perspective, ...] = (
         key="mc_score",
         name="Monte Carlo",
         family="Monte Carlo",
-        role=DIRECTIONAL,
+        role=PROBABILISTIC,
         positive_reading="Xác suất mô phỏng nghiêng về tăng",
         negative_reading="Xác suất mô phỏng nghiêng về giảm",
         neutral_reading="Xác suất mô phỏng hai chiều cân bằng",
@@ -128,7 +134,7 @@ PERSPECTIVES: tuple[Perspective, ...] = (
         key="vrh_score",
         name="Trend Persistence",
         family="Trend Persistence",
-        role=CONTEXT,
+        role=CONFIRMATION,
         positive_reading="Chuỗi giá có quán tính",
         negative_reading="Chuỗi giá hay đảo chiều",
         neutral_reading="Quán tính không rõ",
@@ -138,7 +144,7 @@ PERSPECTIVES: tuple[Perspective, ...] = (
         key="exp_score",
         name="Range Expansion",
         family="Range Expansion",
-        role=CONTEXT,
+        role=DIRECTIONAL,
         positive_reading="Biên độ mở rộng",
         negative_reading="Biên độ co hẹp",
         neutral_reading="Biên độ ổn định",
@@ -146,9 +152,9 @@ PERSPECTIVES: tuple[Perspective, ...] = (
     ),
     Perspective(
         key="vsf_score",
-        name="OHLC Volatility",
+        name="Volatility Context",
         family="Volatility",
-        role=RISK,
+        role=RISK_CONTEXT,
         positive_reading="Biến động cao hơn nền 60 phiên",
         negative_reading="Biến động thấp hơn nền 60 phiên",
         neutral_reading="Biến động quanh nền 60 phiên",
@@ -157,9 +163,9 @@ PERSPECTIVES: tuple[Perspective, ...] = (
     ),
     Perspective(
         key="tail_score",
-        name="Tail Geometry",
+        name="Tail Risk",
         family="Tail Risk",
-        role=RISK,
+        role=RISK_CONTEXT,
         positive_reading="Đuôi phải chiếm ưu thế",
         negative_reading="Đuôi trái chiếm ưu thế",
         neutral_reading="Hai đuôi cân bằng",
@@ -169,9 +175,9 @@ PERSPECTIVES: tuple[Perspective, ...] = (
     ),
     Perspective(
         key="man_score",
-        name="Manipulation Guard",
+        name="Market Integrity",
         family="Market Integrity",
-        role=RISK,
+        role=RISK_CONTEXT,
         positive_reading="Giao dịch bình thường",
         negative_reading="Có dấu hiệu giao dịch bất thường",
         neutral_reading="Giao dịch hơi bất thường",
@@ -203,8 +209,12 @@ def stance_tone(perspective: Perspective, stance: str) -> str:
         return TONE_FLAT
     if perspective.role == DIRECTIONAL:
         return TONE_UP if stance == POSITIVE else TONE_DOWN
-    if perspective.role == RISK:
+    if perspective.role == RISK_CONTEXT:
         return TONE_CALM if perspective.is_favorable(stance) else TONE_WARN
+    if perspective.role == CONFIRMATION:
+        return TONE_UP if perspective.is_favorable(stance) else TONE_DOWN
+    if perspective.role == PROBABILISTIC:
+        return TONE_UP if stance == POSITIVE else TONE_DOWN
     return TONE_INFO
 
 

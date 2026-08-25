@@ -16,6 +16,7 @@ from .overlap import (
     score_correlation,
 )
 from .perspectives import (
+    CONFIRMATION,
     CONTEXT,
     DIRECTIONAL,
     NEGATIVE,
@@ -23,7 +24,9 @@ from .perspectives import (
     PERSPECTIVES,
     PERSPECTIVES_BY_KEY,
     POSITIVE,
+    PROBABILISTIC,
     RISK,
+    RISK_CONTEXT,
     ROLE_LABELS,
     ROLE_ORDER,
     SCORE_KEYS,
@@ -69,7 +72,10 @@ __all__ = [
     "TONE_NA",
     "DIRECTIONAL",
     "CONTEXT",
+    "CONFIRMATION",
     "RISK",
+    "RISK_CONTEXT",
+    "PROBABILISTIC",
     "ROLE_LABELS",
     "ROLE_ORDER",
     "POSITIVE",

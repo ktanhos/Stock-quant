@@ -26,3 +26,31 @@ def range_expansion_score(df: pd.DataFrame) -> pd.Series:
         lambda s: (s - s.rolling(60).mean()) / s.rolling(60).std(ddof=0)
     )
     return 100.0 * np.tanh(z / 2.0)
+
+
+def mean_reversion_interpretation(df: pd.DataFrame) -> pd.DataFrame:
+    """Interpret mean reversion signal based on Hurst exponent and market regime.
+
+    Returns a DataFrame with columns:
+    - hurst_regime: "mean_reverting" (H<0.5) or "trending" (H>=0.5)
+    - mr_confidence: confidence level adjusted by Hurst
+    - is_reliable: boolean indicating if MR signal is interpretable
+    """
+    out = pd.DataFrame(index=df.index)
+
+    # Hurst exponent interpretation
+    hurst = df.get("hurst_60", pd.Series(np.nan, index=df.index))
+    out["hurst_regime"] = "unknown"
+    out.loc[hurst < 0.5, "hurst_regime"] = "mean_reverting"
+    out.loc[hurst >= 0.5, "hurst_regime"] = "trending"
+
+    # MR confidence: higher when Hurst is clearly below 0.5
+    mr_score = df.get("mr_score", pd.Series(np.nan, index=df.index))
+    hurst_distance = (0.5 - hurst.fillna(0.5)).clip(0, 0.5)
+    base_confidence = mr_score.abs() / 100.0
+    out["mr_confidence"] = (base_confidence * (1.0 + hurst_distance * 2.0)).clip(0, 1.0)
+
+    # Reliability: MR signal most reliable when H clearly below 0.5
+    out["is_reliable"] = hurst < 0.45
+
+    return out

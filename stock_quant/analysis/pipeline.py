@@ -9,10 +9,12 @@ from stock_quant.models import (
     ewma_volatility,
     manipulation_guard_score,
     mean_reversion_score,
+    mean_reversion_interpretation,
     monte_carlo_score,
     persistence_features,
     persistence_score,
     range_expansion_score,
+    regime_interpretation,
     risk_adjustment,
     tail_score,
     tsm_score,
@@ -20,6 +22,7 @@ from stock_quant.models import (
     volatility_score,
     yang_zhang_volatility,
 )
+from stock_quant.models.volume_confirmation import volume_confirmation_context
 from stock_quant.research.targets import add_forward_returns
 
 
@@ -32,6 +35,8 @@ def run_signal_pipeline(
 
     Chín mô hình được tính độc lập với nhau và giữ nguyên công thức. Pipeline
     không cộng chúng lại thành một Score tổng hợp.
+
+    Interpretation layers are added as separate columns without changing score values.
     """
     df = add_price_features(price_df)
     df = persistence_features(df)
@@ -53,6 +58,20 @@ def run_signal_pipeline(
     df["regime"] = classify_regime(df)
     df["directional_edge"] = directional_edge(df)
     df["risk_adjustment"] = risk_adjustment(df)
+
+    # Add interpretation layers (as separate columns, not affecting scores)
+    vol_conf = volume_confirmation_context(df)
+    for col in vol_conf.columns:
+        df[col] = vol_conf[col]
+
+    mr_interp = mean_reversion_interpretation(df)
+    for col in mr_interp.columns:
+        df[col] = mr_interp[col]
+
+    regime_interp = regime_interpretation(df)
+    for col in regime_interp.columns:
+        df[col] = regime_interp[col]
+
     df = add_forward_returns(df)
     return df
 

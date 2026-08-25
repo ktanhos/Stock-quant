@@ -48,6 +48,73 @@ def monte_carlo_summary(
     }
 
 
+def monte_carlo_full_display(
+    prices: pd.Series,
+    horizon: int = 20,
+    simulations: int = 5000,
+    seed: int = 42,
+) -> dict[str, float]:
+    """Monte Carlo display with full distribution information.
+
+    Returns all key statistics from Monte Carlo simulation:
+    - p_up: probability of positive return
+    - p_down: probability of negative return
+    - median_return: 50th percentile
+    - expected_return: mean return
+    - p10_return: 10th percentile
+    - p90_return: 90th percentile
+    - prob_range: natural language probability statement
+    """
+    returns = prices.pct_change().dropna().to_numpy()
+    if len(returns) < 60:
+        return {
+            "p_up": np.nan,
+            "p_down": np.nan,
+            "median_return": np.nan,
+            "expected_return": np.nan,
+            "p10_return": np.nan,
+            "p90_return": np.nan,
+            "prob_range": "Dữ liệu không đủ",
+        }
+
+    rng = np.random.default_rng(seed)
+    mu = np.mean(returns[-252:])
+    sigma = np.std(returns[-252:], ddof=1)
+    shocks = rng.normal(mu, sigma, size=(simulations, horizon))
+    terminal = np.exp(np.log(prices.iloc[-1]) + shocks.sum(axis=1))
+    terminal_return = terminal / prices.iloc[-1] - 1.0
+
+    p_up = float(np.mean(terminal_return > 0))
+    p_down = 1.0 - p_up
+    median_ret = float(np.median(terminal_return))
+    expected_ret = float(np.mean(terminal_return))
+    p10_ret = float(np.percentile(terminal_return, 10))
+    p90_ret = float(np.percentile(terminal_return, 90))
+
+    # Natural language probability statement
+    prob_pct = int(p_up * 100)
+    if prob_pct >= 70:
+        prob_range = f"Cao ({prob_pct}%): Xác suất tăng"
+    elif prob_pct >= 60:
+        prob_range = f"Tương đối ({prob_pct}%): Nhiều khả năng tăng"
+    elif prob_pct > 50:
+        prob_range = f"Hơi (+{prob_pct - 50}%): Hơi nghiêng về tăng"
+    elif prob_pct == 50:
+        prob_range = "Cân bằng (50%): Hai chiều ngang nhau"
+    else:
+        prob_range = f"Hơi ({100 - prob_pct}%): Hơi nghiêng về giảm"
+
+    return {
+        "p_up": p_up,
+        "p_down": p_down,
+        "median_return": median_ret,
+        "expected_return": expected_ret,
+        "p10_return": p10_ret,
+        "p90_return": p90_ret,
+        "prob_range": prob_range,
+    }
+
+
 def monte_carlo_score(
     df: pd.DataFrame,
     horizon: int = 20,
