@@ -13,7 +13,7 @@ from tests.test_consensus import make_prices  # noqa: E402
 
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app.py")
 
-LAYERS = ("Current Signal", "Score Impact", "Correlation", "Consensus")
+LAYERS = ("Current Signal", "Score Impact", "Correlation", "Consensus", "Research")
 
 
 def build_app(symbols=("MSR", "FPT"), periods=300) -> AppTest:
