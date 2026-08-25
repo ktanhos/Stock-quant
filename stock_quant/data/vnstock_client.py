@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import timedelta
 from typing import Iterable
 
@@ -65,38 +66,64 @@ class VnstockClient:
 
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
-    def fetch_price_history(
+    def _process_symbol(
         self,
-        symbols: str | Iterable[str],
-        start: str,
-        end: str,
-    ) -> pd.DataFrame:
-        start_ts = pd.Timestamp(start)
-        end_ts = pd.Timestamp(end)
-
-        if start_ts > end_ts:
-            raise ValueError("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc")
-
+        symbol: str,
+        start_ts: pd.Timestamp,
+        end_ts: pd.Timestamp,
+    ) -> pd.DataFrame | None:
+        """Fetch và xử lý dữ liệu một symbol."""
         market = self._market_class()
-        rows = []
+        history = self._fetch_history(market, symbol, start_ts, end_ts)
 
-        for symbol in normalize_symbols(symbols):
-            history = self._fetch_history(
-                market,
-                symbol,
-                start_ts,
-                end_ts,
+        if history.empty:
+            return None
+
+        frame = history.rename(
+            columns={"time": "date", "datetime": "date"}
+        ).copy()
+        frame["symbol"] = symbol
+
+        required = [
+            "symbol",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        ]
+        missing = [
+            column for column in required
+            if column not in frame.columns
+        ]
+        if missing:
+            raise ValueError(
+                f"Vnstock trả về thiếu cột cho {symbol}: {missing}"
             )
 
-            if history.empty:
-                continue
+        frame["date"] = pd.to_datetime(
+            frame["date"],
+            errors="coerce",
+        ).dt.tz_localize(None)
 
-            frame = history.rename(
-                columns={"time": "date", "datetime": "date"}
-            ).copy()
-            frame["symbol"] = symbol
+        for column in ["open", "high", "low", "close", "volume"]:
+            frame[column] = pd.to_numeric(
+                frame[column],
+                errors="coerce",
+            )
 
-            required = [
+        frame = frame.dropna(subset=required[1:])
+        frame = frame[
+            (frame["date"] >= start_ts)
+            & (frame["date"] <= end_ts)
+        ]
+
+        if "value" not in frame.columns:
+            frame["value"] = frame["close"] * frame["volume"]
+
+        return frame[
+            [
                 "symbol",
                 "date",
                 "open",
@@ -104,50 +131,47 @@ class VnstockClient:
                 "low",
                 "close",
                 "volume",
+                "value",
             ]
-            missing = [
-                column for column in required
-                if column not in frame.columns
-            ]
-            if missing:
-                raise ValueError(
-                    f"Vnstock trả về thiếu cột cho {symbol}: {missing}"
-                )
+        ]
 
-            frame["date"] = pd.to_datetime(
-                frame["date"],
-                errors="coerce",
-            ).dt.tz_localize(None)
+    def fetch_price_history(
+        self,
+        symbols: str | Iterable[str],
+        start: str,
+        end: str,
+        max_workers: int = 4,
+    ) -> pd.DataFrame:
+        start_ts = pd.Timestamp(start)
+        end_ts = pd.Timestamp(end)
 
-            for column in ["open", "high", "low", "close", "volume"]:
-                frame[column] = pd.to_numeric(
-                    frame[column],
-                    errors="coerce",
-                )
+        if start_ts > end_ts:
+            raise ValueError("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc")
 
-            frame = frame.dropna(subset=required[1:])
-            frame = frame[
-                (frame["date"] >= start_ts)
-                & (frame["date"] <= end_ts)
-            ]
+        symbol_list = normalize_symbols(symbols)
+        rows = []
 
-            if "value" not in frame.columns:
-                frame["value"] = frame["close"] * frame["volume"]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._process_symbol,
+                    symbol,
+                    start_ts,
+                    end_ts,
+                ): symbol
+                for symbol in symbol_list
+            }
 
-            rows.append(
-                frame[
-                    [
-                        "symbol",
-                        "date",
-                        "open",
-                        "high",
-                        "low",
-                        "close",
-                        "volume",
-                        "value",
-                    ]
-                ]
-            )
+            for future in as_completed(futures):
+                try:
+                    frame = future.result()
+                    if frame is not None:
+                        rows.append(frame)
+                except Exception as exc:
+                    symbol = futures[future]
+                    raise RuntimeError(
+                        f"Lỗi khi fetch dữ liệu {symbol}: {exc}"
+                    ) from exc
 
         if not rows:
             return pd.DataFrame(

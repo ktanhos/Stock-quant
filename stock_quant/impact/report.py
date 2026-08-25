@@ -97,7 +97,9 @@ def _observation_count(df: pd.DataFrame, horizons: tuple[int, ...]) -> int:
     columns = [forward_return_column(h) for h in horizons if forward_return_column(h) in df.columns]
     if not keys or not columns:
         return 0
-    return int(df[keys + columns].dropna(how="all").shape[0])
+    has_score = df[keys].notna().any(axis=1)
+    has_return = df[columns].notna().any(axis=1)
+    return int((has_score & has_return).sum())
 
 
 def score_impact(
@@ -157,7 +159,7 @@ def score_impact(
     spread = quintile_summary(profile)
 
     span = effective_window(len(data) if scope == "symbol" else _rows_per_symbol(data), window)
-    rolling = rolling_ic(data, horizons=horizons, window=window, step=step)
+    rolling = rolling_ic(data, horizons=horizons, window=span, step=step)
     stability = ic_stability(rolling)
 
     observations = _observation_count(data, horizons)
