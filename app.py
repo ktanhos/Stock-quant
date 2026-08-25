@@ -727,7 +727,16 @@ def render_consensus(report) -> None:
     )
 
     st.markdown("#### 📖 Market Narrative")
-    st.info(f"💬 {report.narrative}")
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.08) 100%);
+                border-left: 4px solid #3b82f6; border-radius: 8px; padding: 1.25rem;
+                margin-bottom: 1rem;">
+        <p style="margin: 0; color: #1f2937; line-height: 1.6;">
+            <span style="font-size: 1.1rem; margin-right: 0.5rem;">💬</span>
+            {report.narrative}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown('<div class="sq-divider"></div>', unsafe_allow_html=True)
 
@@ -797,18 +806,39 @@ def build_impacts(result: pd.DataFrame, symbols: tuple[str, ...], window: int) -
 
 
 st.markdown("""
-    <div style="text-align: center; padding: 1rem 0;">
-        <h1 style="margin: 0; color: #1f2937;">📈 Stock Quant</h1>
-        <p style="color: #6b7280; margin-top: 0.5rem; font-size: 1rem;">
-            Phân tích cổ phiếu với 9 mô hình độc lập · Đánh giá tin cậy · Không Composite Score
+    <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+                border-radius: 12px; padding: 2rem 1.5rem; text-align: center; margin-bottom: 1rem;">
+        <h1 style="margin: 0; color: #1f2937; font-size: 2.5rem;">📈 Stock Quant</h1>
+        <p style="color: #6b7280; margin-top: 0.75rem; font-size: 1.1rem; line-height: 1.6;">
+            <strong>Phân tích cổ phiếu với 9 mô hình độc lập</strong><br>
+            <span style="font-size: 0.95rem;">Đánh giá tin cậy • Không Composite Score • Không trọng số</span>
         </p>
     </div>
-    <hr style="margin: 1rem 0; border: none; border-top: 1px solid rgba(128, 128, 128, 0.2);">
 """, unsafe_allow_html=True)
 
-st.caption(
-    "🔍 **4 tầng phân tích:** Current Signal • Score Impact • Correlation • Consensus"
-)
+st.markdown("""
+<div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-weight: 600; font-size: 1.1rem;">📊</span>
+        <span style="color: #6b7280; font-weight: 500;">Current Signal</span>
+    </div>
+    <span style="color: #d1d5db; opacity: 0.5;">•</span>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-weight: 600; font-size: 1.1rem;">📈</span>
+        <span style="color: #6b7280; font-weight: 500;">Score Impact</span>
+    </div>
+    <span style="color: #d1d5db; opacity: 0.5;">•</span>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-weight: 600; font-size: 1.1rem;">🔗</span>
+        <span style="color: #6b7280; font-weight: 500;">Correlation</span>
+    </div>
+    <span style="color: #d1d5db; opacity: 0.5;">•</span>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-weight: 600; font-size: 1.1rem;">💡</span>
+        <span style="color: #6b7280; font-weight: 500;">Consensus</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("""
@@ -938,10 +968,36 @@ if run:
     st.session_state["counts"] = prices.groupby("symbol").size().rename("Số phiên")
 
 if "result" not in st.session_state:
-    st.info(
-        "Chọn nguồn dữ liệu, nhập một hoặc nhiều mã rồi bấm Phân tích. "
-        "Mỗi mô hình được đọc như một góc nhìn riêng về cổ phiếu."
-    )
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(16, 185, 129, 0.08) 100%);
+                border-radius: 12px; padding: 2rem; text-align: center; margin-top: 2rem;">
+        <h3 style="color: #1f2937; margin-top: 0;">🚀 Bắt đầu phân tích</h3>
+        <p style="color: #6b7280; margin-bottom: 0;">
+            Sử dụng bảng điều khiển bên trái để chọn nguồn dữ liệu, nhập mã cổ phiếu và khoảng thời gian,<br>
+            sau đó nhấn <strong>Phân tích</strong> để xem kết quả.
+        </p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
+        <div style="background: rgba(16, 185, 129, 0.08); border-radius: 12px; padding: 1.5rem; border-left: 4px solid #10b981;">
+            <h4 style="color: #1f2937; margin-top: 0;">📊 Cách hoạt động</h4>
+            <ul style="color: #6b7280; line-height: 1.8; margin-bottom: 0;">
+                <li>9 mô hình độc lập phân tích cổ phiếu</li>
+                <li>Mỗi mô hình là 1 góc nhìn riêng</li>
+                <li>Không có điểm tổng hợp hoặc trọng số</li>
+            </ul>
+        </div>
+        <div style="background: rgba(59, 130, 246, 0.08); border-radius: 12px; padding: 1.5rem; border-left: 4px solid #3b82f6;">
+            <h4 style="color: #1f2937; margin-top: 0;">📈 4 Tầng phân tích</h4>
+            <ul style="color: #6b7280; line-height: 1.8; margin-bottom: 0;">
+                <li><strong>Current Signal:</strong> Tín hiệu hiện tại</li>
+                <li><strong>Score Impact:</strong> Tác động của điểm</li>
+                <li><strong>Correlation:</strong> Tương quan</li>
+                <li><strong>Consensus:</strong> Đồng thuận</li>
+            </ul>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.stop()
 
 result: pd.DataFrame = st.session_state["result"]
