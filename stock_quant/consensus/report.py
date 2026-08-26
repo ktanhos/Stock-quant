@@ -25,14 +25,11 @@ from .overlap import (
 )
 from .perspectives import (
     CONFIRMATION,
-    CONTEXT,
     DIRECTIONAL,
     NEGATIVE,
     NEUTRAL,
     POSITIVE,
     PERSPECTIVES,
-    PROBABILISTIC,
-    RISK,
     RISK_CONTEXT,
     ROLE_LABELS,
     ROLE_ORDER,
@@ -196,7 +193,7 @@ def _agreement_groups(views: tuple[ViewStance, ...]) -> tuple[ConsensusGroup, ..
         if len(members) >= 2:
             groups.append(ConsensusGroup(label, stance, DIRECTIONAL, members))
 
-    confirmation = [v for v in views if v.role in (CONTEXT, CONFIRMATION) and v.available]
+    confirmation = [v for v in views if v.role == CONFIRMATION and v.available]
     for stance, label in (
         (POSITIVE, "Bối cảnh mở rộng và có quán tính"),
         (NEGATIVE, "Bối cảnh co hẹp và hay đảo chiều"),
@@ -205,7 +202,7 @@ def _agreement_groups(views: tuple[ViewStance, ...]) -> tuple[ConsensusGroup, ..
         if len(members) >= 2:
             groups.append(ConsensusGroup(label, stance, CONFIRMATION, members))
 
-    risk = [v for v in views if v.role in (RISK, RISK_CONTEXT) and v.available]
+    risk = [v for v in views if v.role == RISK_CONTEXT and v.available]
     warnings = tuple(v for v in risk if v.perspective.is_unfavorable(v.stance))
     if len(warnings) >= 2:
         groups.append(ConsensusGroup("Đồng thuận cảnh báo rủi ro", NEGATIVE, RISK_CONTEXT, warnings))
@@ -276,7 +273,7 @@ def _conflicts(views: tuple[ViewStance, ...]) -> tuple[ConflictNote, ...]:
         )
 
     risk_warnings = [
-        v for v in views if v.role in (RISK, RISK_CONTEXT) and v.available and v.perspective.is_unfavorable(v.stance)
+        v for v in views if v.role == RISK_CONTEXT and v.available and v.perspective.is_unfavorable(v.stance)
     ]
     if bullish and risk_warnings:
         names = _join(v.name for v in risk_warnings)
@@ -451,7 +448,7 @@ def consensus_overview(reports: list[SymbolConsensus]) -> pd.DataFrame:
         counts = report.directional_counts
         risk_warnings = [
             v.name
-            for v in report.views_by_role(RISK)
+            for v in report.views_by_role(RISK_CONTEXT)
             if v.available and v.perspective.is_unfavorable(v.stance)
         ]
         rows.append(
