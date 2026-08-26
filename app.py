@@ -9,10 +9,8 @@ from plotly.subplots import make_subplots
 
 from stock_quant.analysis import latest_analysis, run_signal_pipeline
 from stock_quant.consensus import (
-    CONTEXT,
-    DIRECTIONAL,
-    RISK,
     ROLE_LABELS,
+    ROLE_ORDER,
     PERSPECTIVES_BY_KEY,
     consensus_overview,
     consensus_report,
@@ -53,8 +51,25 @@ STYLE = """
     --color-neutral: #6b7280;
     --color-info: #3b82f6;
     --color-warn: #f59e0b;
-    --color-bg-light: #f9fafb;
     --color-border: rgba(128, 128, 128, 0.28);
+    --sq-text: #1f2937;
+    --sq-text-muted: #6b7280;
+    --sq-surface: rgba(255, 255, 255, 0.95);
+    --sq-surface-strong: rgba(255, 255, 255, 0.98);
+    --sq-chart-bg: rgba(255, 255, 255, 0.8);
+    --sq-divider-color: rgba(128, 128, 128, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-border: rgba(255, 255, 255, 0.18);
+        --sq-text: #f3f4f6;
+        --sq-text-muted: #9ca3af;
+        --sq-surface: rgba(49, 51, 63, 0.6);
+        --sq-surface-strong: rgba(49, 51, 63, 0.75);
+        --sq-chart-bg: rgba(49, 51, 63, 0.5);
+        --sq-divider-color: rgba(255, 255, 255, 0.16);
+    }
 }
 
 .sq-badge {
@@ -86,7 +101,8 @@ STYLE = """
     border-radius: 12px;
     padding: 1rem;
     margin-bottom: 0.75rem;
-    background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    background: var(--sq-surface);
+    color: var(--sq-text);
     transition: all 0.2s ease;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -104,7 +120,7 @@ STYLE = """
     justify-content: space-between;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
-    color: #1f2937;
+    color: var(--sq-text);
 }
 
 .sq-card-score {
@@ -125,9 +141,9 @@ STYLE = """
     font-weight: 700;
     font-size: 1rem;
     margin-bottom: 0.6rem;
-    color: #1f2937;
+    color: var(--sq-text);
     padding-bottom: 0.4rem;
-    border-bottom: 2px solid rgba(128, 128, 128, 0.15);
+    border-bottom: 2px solid var(--sq-divider-color);
 }
 
 .sq-section-note {
@@ -141,7 +157,7 @@ STYLE = """
 }
 
 .sq-metric-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%);
+    background: var(--sq-surface-strong);
     border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 1.25rem;
@@ -158,13 +174,18 @@ STYLE = """
 .sq-metric-value {
     font-size: 1.8rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--sq-text);
     font-variant-numeric: tabular-nums;
 }
 
+.sq-metric-value.sq-up   { color: var(--color-up); }
+.sq-metric-value.sq-down { color: var(--color-down); }
+.sq-metric-value.sq-flat { color: var(--color-neutral); }
+.sq-metric-value.sq-info { color: var(--color-info); }
+
 .sq-metric-label {
     font-size: 0.85rem;
-    color: #6b7280;
+    color: var(--sq-text-muted);
     margin-top: 0.4rem;
     font-weight: 500;
 }
@@ -175,10 +196,10 @@ STYLE = """
 .sq-calm { background: rgba(16, 185, 129, 0.12);  color: var(--color-up); }
 .sq-info { background: rgba(59, 130, 246, 0.15);  color: var(--color-info); border-left: 3px solid var(--color-info); }
 .sq-flat { background: rgba(128, 128, 128, 0.15); color: var(--color-neutral); }
-.sq-na   { background: rgba(128, 128, 128, 0.08); color: #9ca3af; }
+.sq-na   { background: rgba(128, 128, 128, 0.12); color: var(--sq-text-muted); }
 
 .sq-chart-container {
-    background: rgba(255, 255, 255, 0.8);
+    background: var(--sq-chart-bg);
     border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 1rem;
@@ -187,14 +208,43 @@ STYLE = """
 
 .sq-divider {
     height: 1px;
-    background: linear-gradient(to right, transparent, rgba(128, 128, 128, 0.2), transparent);
+    background: linear-gradient(to right, transparent, var(--sq-divider-color), transparent);
     margin: 1.5rem 0;
 }
 
-@media (prefers-color-scheme: dark) {
-    .sq-card, .sq-metric-card, .sq-chart-container {
-        background-color: rgba(31, 41, 55, 0.5);
-    }
+.sq-text-strong { color: var(--sq-text); }
+.sq-text-muted  { color: var(--sq-text-muted); }
+
+.sq-hero {
+    border-radius: 12px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.sq-hero h1, .sq-hero h3, .sq-hero h4 {
+    color: var(--sq-text);
+    margin-top: 0;
+}
+
+.sq-hero p, .sq-hero ul, .sq-hero li {
+    color: var(--sq-text-muted);
+}
+
+.sq-empty-state {
+    padding: 1rem;
+    text-align: center;
+    opacity: 0.75;
+    color: var(--sq-text-muted);
+}
+
+.sq-narrative {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%);
+    border-left: 4px solid var(--color-info);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--sq-text);
 }
 </style>
 """
@@ -447,7 +497,7 @@ def render_symbol_header(report) -> None:
     with col1:
         st.markdown(
             f'''<div class="sq-metric-card">
-            <div class="sq-metric-value" style="color: #10b981;">↑ {counts["up"]}</div>
+            <div class="sq-metric-value sq-up">↑ {counts["up"]}</div>
             <div class="sq-metric-label">Hướng tăng</div>
             </div>''',
             unsafe_allow_html=True
@@ -456,7 +506,7 @@ def render_symbol_header(report) -> None:
     with col2:
         st.markdown(
             f'''<div class="sq-metric-card">
-            <div class="sq-metric-value" style="color: #ef4444;">↓ {counts["down"]}</div>
+            <div class="sq-metric-value sq-down">↓ {counts["down"]}</div>
             <div class="sq-metric-label">Hướng giảm</div>
             </div>''',
             unsafe_allow_html=True
@@ -465,7 +515,7 @@ def render_symbol_header(report) -> None:
     with col3:
         st.markdown(
             f'''<div class="sq-metric-card">
-            <div class="sq-metric-value" style="color: #6b7280;">=  {counts["neutral"]}</div>
+            <div class="sq-metric-value sq-flat">=  {counts["neutral"]}</div>
             <div class="sq-metric-label">Trung tính</div>
             </div>''',
             unsafe_allow_html=True
@@ -479,7 +529,7 @@ def render_symbol_header(report) -> None:
         )
         st.markdown(
             f'''<div class="sq-metric-card">
-            <div class="sq-metric-value" style="color: #3b82f6;">{group_text}</div>
+            <div class="sq-metric-value sq-info">{group_text}</div>
             <div class="sq-metric-label">Nhóm thông tin</div>
             </div>''',
             unsafe_allow_html=True
@@ -495,10 +545,13 @@ def render_current_signal(report) -> None:
     st.markdown('<div class="sq-divider"></div>', unsafe_allow_html=True)
 
     st.markdown("### 🎯 Chín góc nhìn độc lập")
-    st.caption("Ba nhóm: Hướng tăng/giảm (Directional), Ngữ cảnh (Context), và Rủi ro (Risk)")
+    st.caption(
+        "Bốn vai trò: Hướng giá (Directional), Xác nhận (Confirmation), "
+        "Bối cảnh rủi ro (Risk Context) và Xác suất (Probabilistic)"
+    )
 
-    role_columns = st.columns(3)
-    for column, role in zip(role_columns, (DIRECTIONAL, CONTEXT, RISK)):
+    role_columns = st.columns(len(ROLE_ORDER))
+    for column, role in zip(role_columns, ROLE_ORDER):
         with column:
             st.markdown(
                 f'<div class="sq-role-title">🔹 {ROLE_LABELS[role]}</div>', unsafe_allow_html=True
@@ -748,10 +801,8 @@ def render_consensus(report) -> None:
 
     st.markdown("#### 📖 Market Narrative")
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.08) 100%);
-                border-left: 4px solid #3b82f6; border-radius: 8px; padding: 1.25rem;
-                margin-bottom: 1rem;">
-        <p style="margin: 0; color: #1f2937; line-height: 1.6;">
+    <div class="sq-narrative">
+        <p style="margin: 0; line-height: 1.6;">
             <span style="font-size: 1.1rem; margin-right: 0.5rem;">💬</span>
             {report.narrative}
         </p>
@@ -774,7 +825,7 @@ def render_consensus(report) -> None:
                 )
         else:
             st.markdown(
-                '<div style="padding: 1rem; text-align: center; opacity: 0.6; color: #6b7280;">'
+                '<div class="sq-empty-state">'
                 '➖ Chưa có nhóm đồng thuận từ 2+ góc nhìn'
                 '</div>',
                 unsafe_allow_html=True
@@ -790,7 +841,7 @@ def render_consensus(report) -> None:
                 )
         else:
             st.markdown(
-                '<div style="padding: 1rem; text-align: center; opacity: 0.6; color: #6b7280;">'
+                '<div class="sq-empty-state">'
                 '✓ Không có mâu thuẫn giữa các góc nhìn'
                 '</div>',
                 unsafe_allow_html=True
@@ -807,7 +858,7 @@ def render_consensus(report) -> None:
                 )
         else:
             st.markdown(
-                '<div style="padding: 1rem; text-align: center; opacity: 0.6; color: #6b7280;">'
+                '<div class="sq-empty-state">'
                 '➖ Không có góc nhìn trung tính'
                 '</div>',
                 unsafe_allow_html=True
@@ -826,11 +877,10 @@ def build_impacts(result: pd.DataFrame, symbols: tuple[str, ...], window: int) -
 
 
 st.markdown("""
-    <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
-                border-radius: 12px; padding: 2rem 1.5rem; text-align: center; margin-bottom: 1rem;">
-        <h1 style="margin: 0; color: #1f2937; font-size: 2.5rem;">📈 Stock Quant</h1>
-        <p style="color: #6b7280; margin-top: 0.75rem; font-size: 1.1rem; line-height: 1.6;">
-            <strong>Phân tích cổ phiếu với 9 mô hình độc lập</strong><br>
+    <div class="sq-hero" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);">
+        <h1 style="font-size: 2.5rem;">📈 Stock Quant</h1>
+        <p style="margin-top: 0.75rem; font-size: 1.1rem; line-height: 1.6;">
+            <strong class="sq-text-strong">Phân tích cổ phiếu với 9 mô hình độc lập</strong><br>
             <span style="font-size: 0.95rem;">Đánh giá tin cậy • Không Composite Score • Không trọng số</span>
         </p>
     </div>
@@ -840,22 +890,22 @@ st.markdown("""
 <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
     <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-weight: 600; font-size: 1.1rem;">📊</span>
-        <span style="color: #6b7280; font-weight: 500;">Current Signal</span>
+        <span class="sq-text-muted" style="font-weight: 500;">Current Signal</span>
     </div>
-    <span style="color: #d1d5db; opacity: 0.5;">•</span>
+    <span class="sq-text-muted" style="opacity: 0.5;">•</span>
     <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-weight: 600; font-size: 1.1rem;">📈</span>
-        <span style="color: #6b7280; font-weight: 500;">Score Impact</span>
+        <span class="sq-text-muted" style="font-weight: 500;">Score Impact</span>
     </div>
-    <span style="color: #d1d5db; opacity: 0.5;">•</span>
+    <span class="sq-text-muted" style="opacity: 0.5;">•</span>
     <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-weight: 600; font-size: 1.1rem;">🔗</span>
-        <span style="color: #6b7280; font-weight: 500;">Correlation</span>
+        <span class="sq-text-muted" style="font-weight: 500;">Correlation</span>
     </div>
-    <span style="color: #d1d5db; opacity: 0.5;">•</span>
+    <span class="sq-text-muted" style="opacity: 0.5;">•</span>
     <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-weight: 600; font-size: 1.1rem;">💡</span>
-        <span style="color: #6b7280; font-weight: 500;">Consensus</span>
+        <span class="sq-text-muted" style="font-weight: 500;">Consensus</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -874,7 +924,7 @@ with st.sidebar:
         font-weight: 700;
         font-size: 1.1rem;
         margin-bottom: 0.5rem;
-        color: #1f2937;
+        color: var(--sq-text);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -997,31 +1047,31 @@ if run:
 
 if "result" not in st.session_state:
     st.markdown("""
-    <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(16, 185, 129, 0.08) 100%);
-                border-radius: 12px; padding: 2rem; text-align: center; margin-top: 2rem;">
-        <h3 style="color: #1f2937; margin-top: 0;">🚀 Bắt đầu phân tích</h3>
-        <p style="color: #6b7280; margin-bottom: 0;">
+    <div class="sq-hero" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(16, 185, 129, 0.08) 100%); margin-top: 2rem;">
+        <h3>🚀 Bắt đầu phân tích</h3>
+        <p style="margin-bottom: 0;">
             Sử dụng bảng điều khiển bên trái để chọn nguồn dữ liệu, nhập mã cổ phiếu và khoảng thời gian,<br>
             sau đó nhấn <strong>Phân tích</strong> để xem kết quả.
         </p>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
-        <div style="background: rgba(16, 185, 129, 0.08); border-radius: 12px; padding: 1.5rem; border-left: 4px solid #10b981;">
-            <h4 style="color: #1f2937; margin-top: 0;">📊 Cách hoạt động</h4>
-            <ul style="color: #6b7280; line-height: 1.8; margin-bottom: 0;">
+        <div class="sq-hero" style="background: rgba(16, 185, 129, 0.08); text-align: left; border-left: 4px solid #10b981;">
+            <h4>📊 Cách hoạt động</h4>
+            <ul style="line-height: 1.8; margin-bottom: 0;">
                 <li>9 mô hình độc lập phân tích cổ phiếu</li>
                 <li>Mỗi mô hình là 1 góc nhìn riêng</li>
                 <li>Không có điểm tổng hợp hoặc trọng số</li>
             </ul>
         </div>
-        <div style="background: rgba(59, 130, 246, 0.08); border-radius: 12px; padding: 1.5rem; border-left: 4px solid #3b82f6;">
-            <h4 style="color: #1f2937; margin-top: 0;">📈 4 Tầng phân tích</h4>
-            <ul style="color: #6b7280; line-height: 1.8; margin-bottom: 0;">
+        <div class="sq-hero" style="background: rgba(59, 130, 246, 0.08); text-align: left; border-left: 4px solid #3b82f6;">
+            <h4>📈 5 Tầng phân tích</h4>
+            <ul style="line-height: 1.8; margin-bottom: 0;">
                 <li><strong>Current Signal:</strong> Tín hiệu hiện tại</li>
                 <li><strong>Score Impact:</strong> Tác động của điểm</li>
                 <li><strong>Correlation:</strong> Tương quan</li>
                 <li><strong>Consensus:</strong> Đồng thuận</li>
+                <li><strong>Research:</strong> Nghiên cứu Score</li>
             </ul>
         </div>
     </div>

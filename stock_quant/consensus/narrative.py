@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .perspectives import CONTEXT, DIRECTIONAL, NEGATIVE, POSITIVE, RISK
+from .perspectives import CONFIRMATION, DIRECTIONAL, NEGATIVE, POSITIVE, RISK_CONTEXT
 
 if TYPE_CHECKING:  # pragma: no cover
     from .report import SymbolConsensus
@@ -64,21 +64,21 @@ def _directional_sentence(consensus: "SymbolConsensus") -> str:
 
 
 def _context_sentence(consensus: "SymbolConsensus") -> str:
-    views = [v for v in consensus.views_by_role(CONTEXT) if v.available]
+    views = [v for v in consensus.views_by_role(CONFIRMATION) if v.available]
     if not views:
         return ""
     parts = [f"{v.name} cho thấy {v.reading.lower()}" for v in views]
-    return "Về bối cảnh, " + join_names(parts) + "."
+    return "Về xác nhận, " + join_names(parts) + "."
 
 
 def _risk_sentence(consensus: "SymbolConsensus") -> str:
-    views = [v for v in consensus.views_by_role(RISK) if v.available]
+    views = [v for v in consensus.views_by_role(RISK_CONTEXT) if v.available]
     if not views:
         return ""
     warnings = [v for v in views if v.perspective.is_unfavorable(v.stance)]
     if warnings:
-        return "Về rủi ro, " + join_names(f"{v.name} cho thấy {v.reading.lower()}" for v in warnings) + "."
-    return "Về rủi ro, chưa góc nhìn nào trong ba góc nhìn rủi ro phát tín hiệu cảnh báo."
+        return "Về bối cảnh rủi ro, " + join_names(f"{v.name} cho thấy {v.reading.lower()}" for v in warnings) + "."
+    return "Về bối cảnh rủi ro, chưa góc nhìn nào trong ba góc nhìn rủi ro phát tín hiệu cảnh báo."
 
 
 def _conflict_sentences(consensus: "SymbolConsensus") -> list[str]:
